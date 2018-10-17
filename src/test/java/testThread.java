@@ -2,6 +2,7 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
@@ -26,33 +27,30 @@ public class testThread implements Runnable {
             new LinkedBlockingQueue<Runnable>(), namedThreadFactory, new ThreadPoolExecutor.CallerRunsPolicy());
 
     public static void main(String[] args) throws InterruptedException {
-//        for (int i = 0; i <= 10; i++) {
-//            threadPool.execute(new testThread(1 + ""));
-//            threadPool.awaitTermination(10000, TimeUnit.MILLISECONDS);
-//        }
-//
+
         Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
                 int i = 0;
-//                synchronized (ii) {
-                while (true) {
-                    System.out.println(i);
-                    System.out.println("ddd:" + threadPool.getActiveCount());
-                    if (ii.size() > 0) {
-                        ii.remove(0);
-                    }
-                    if (ii.size() < 3 && ii.size() > 0) {
-                        this.notifyAll();
-                    }
+                synchronized (ii) {
+                    while (true) {
+                        System.out.println(ii.size());
+                        System.out.println("ddd:" + threadPool.getActiveCount());
+                        ii.add(i + "");
+                        ii.add("a");
+                        ii.add("b");
+                        ii.add("c");
+                        ii.add("d");
+                        ii.add("e");
 
-                    i++;
-                    try {
-                        this.wait();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        try {
+                            ii.wait();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        ii.notifyAll();
+                        i++;
                     }
-//                    }
                 }
             }
         });
@@ -60,11 +58,10 @@ public class testThread implements Runnable {
         for (int i = 0; i < 10; i++) {
             tasks.add(new testThread(i + ""));
         }
-
-
         for (Runnable task : tasks) {
             threadPool.execute(task);
         }
+
     }
 
     @Override
@@ -73,19 +70,22 @@ public class testThread implements Runnable {
             System.out.println("==========");
             System.out.println(Thread.currentThread().getName());
             System.out.println("==========");
-
             int i = 0;
-            while (ii.size() < 3) {
-                ii.add(Thread.currentThread().getName() + "-" + name + "_" + i);
-                System.out.println(Thread.currentThread().getName() + "-" + name + "_" + i);
-                i++;
-                if (ii.size() == 1) {
+            while (true) {
+                if (ii.size() <= 0) {
                     try {
-                        this.wait();
+                        ii.wait();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
+                } else {
+                    ii.remove(0);
+                    System.out.println("remove:" + Thread.currentThread().getName() + "-" + name + "__" + new Date().getTime());
                 }
+
+                i++;
+                if (ii.size() <= 0)
+                    ii.notifyAll();
             }
         }
     }
