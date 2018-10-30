@@ -3,29 +3,27 @@ package com.mispower.utils.file;
 import com.google.common.base.Preconditions;
 
 import java.io.*;
-import java.util.LinkedList;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 /**
  * FileAdaptor provides read and write access to a variety of files.
- * For consistency, the file suffix must be preserved
+ * For consistency, the file suffix must be preserved.
+ * For performance ,this class extends BufferedInputStream
  *
  * @author wuguolin
+ * @see java.io.BufferedInputStream
  */
-public class FileAdaptor {
+public class FileAdaptor extends BufferedInputStream {
+
+    private static final int DEFAULT_BUFFER_SIZE = 8192;
 
     /**
      * input file
      */
     private final File file;
-    /**
-     * max buffer size for every read,used for read big file.
-     */
-    private final int maxReadBuffer;
-    /**
-     * output directory. If empty,will not write output
-     */
-    private final String outputDir;
+
     /**
      * file suffix.To consistency,write output file will be remain same suffix as input file.
      */
@@ -35,167 +33,105 @@ public class FileAdaptor {
      */
     private String fileNameWithoutSuf;
 
-    private final int fileHasCode;
+    /**
+     * Digest of file context,used to filter same file.
+     */
+    private MessageDigest mMessageDigest = null;
 
     /**
-     * read buffer
+     * instance FileAdaptor
+     *
+     * @param file file
      */
-    private final byte[] buffer;
+    private FileAdaptor(File file) throws FileNotFoundException {
+        this(file, DEFAULT_BUFFER_SIZE);
+    }
 
-
-    private final LinkedList<byte[]> dataQueue = new LinkedList<>();
-
-//    private final AtomicInteger maxBufferSize = new AtomicInteger(1024);
-//
-//    private final AtomicInteger maxBufferSize = new AtomicInteger(1000);
-
-    /**
-     * dot of file suffix
-     */
-    private final String SEPARATOR = ".";
-
-    private FileAdaptor(File file, int maxReadBuffer, String outputDir) {
+    private FileAdaptor(File file, int size) throws FileNotFoundException {
+        super(new FileInputStream(file), size);
         this.file = file;
-        this.fileHasCode = file.hashCode();
-        this.maxReadBuffer = maxReadBuffer;
-        this.outputDir = outputDir;
-        buffer = new byte[maxReadBuffer];
         init();
     }
 
+    /**
+     * initialize
+     */
     private void init() {
-        String fileName = file.getName();
-        int dot = fileName.lastIndexOf(SEPARATOR);
+        final String separator = ".";
+        final String fileName = file.getName();
+        int dot = fileName.lastIndexOf(separator);
         suffix = fileName.substring(dot + 1);
         fileNameWithoutSuf = fileName.substring(0, dot);
-
+        try {
+            mMessageDigest = MessageDigest.getInstance("MD5");
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
-     * read file to buffer stream
+     * Get file suffix.
      *
-     * @return
+     * @return file suffix
      */
-    public int read() {
-        try {
-            Long start = System.currentTimeMillis();
-            FileInputStream fileInputStream = new FileInputStream(file);
-            BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
-            int len = 0;
-            byte[] copy;
-            while ((len=bufferedInputStream.read(buffer)) != -1) {
-                copy=new byte[len];
-                System.arraycopy(buffer,0,copy,0,len);
-                offerQueue(copy);
-
-            }
-            Long end = System.currentTimeMillis();
-            System.out.println("use time:" + maxReadBuffer + ": leap size:" + ":" + (end - start));
-            bufferedInputStream.close();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return 0;
-    }
-
-
-    public void offerQueue(byte[] data) {
-        if (data != null) {
-            synchronized (dataQueue) {
-                dataQueue.offer(data);
-            }
-        }
-    }
-
-    public void doProcess() {
-        write();
-
-    }
-
-    private void write() {
-        File writeFile = preWrite();
-        try {
-            FileOutputStream fileOutputStream = new FileOutputStream(writeFile, true);
-            BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
-            final LinkedBlockingQueue<byte[]> tmp = new LinkedBlockingQueue<>();
-            synchronized (dataQueue) {
-                tmp.addAll(dataQueue);
-                dataQueue.clear();
-            }
-            for (byte[] data : tmp) {
-                bufferedOutputStream.write(data, 0, data.length);
-            }
-            bufferedOutputStream.flush();
-            bufferedOutputStream.close();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-
-    }
-
-    private File preWrite() {
-        Preconditions.checkNotNull(outputDir, "outputDir must be not empty if want to write");
-        final File outDir = new File(outputDir);
-        if (!outDir.exists()) {
-            outDir.mkdir();
-        }
-        Preconditions.checkState(outDir.isDirectory(),
-                "Path is not a directory: " + outDir.getAbsolutePath());
-        StringBuffer sb = new StringBuffer();
-        sb.append(outputDir);
-        sb.append("/");
-        sb.append(fileHasCode);
-        sb.append(SEPARATOR);
-        sb.append(suffix);
-        return new File(sb.toString());
-    }
-
-
     public String getSuffix() {
         return suffix;
     }
 
+    /**
+     * Get file name
+     *
+     * @return String
+     */
     public String getFileName() {
         return fileNameWithoutSuf;
     }
 
-    /**
-     * Builder Pattern
-     */
-    public static class Builder {
-        private String inputFile;
-        private int maxReadBuffer = 1024;
-        private String outputDir;
-
-        public Builder setInputFile(String inputFile) {
-            this.inputFile = inputFile;
-            return this;
-        }
-
-        public Builder setMaxReadBuffer(int maxReadBuffer) {
-            this.maxReadBuffer = maxReadBuffer;
-            return this;
-        }
-
-        public Builder setOutputDir(String outputDir) {
-            this.outputDir = outputDir;
-            return this;
-        }
-
-
-        public FileAdaptor build() {
-            // Sanity checks
-            Preconditions.checkNotNull(inputFile, "must be specify input path");
-            File file = new File(inputFile);
-            Preconditions.checkState(file.isFile(), "The parameter type must be a file");
-            return new FileAdaptor(file, maxReadBuffer, outputDir);
-        }
+    @Override
+    public int hashCode() {
+        return file.hashCode();
     }
 
 
+    /**
+     * Get the MD5 of the file.Used to compare  files which have different file name contains same content or not.
+     */
+    public String getFileMD5() {
+        try {
+            int maxReadBuffer = DEFAULT_BUFFER_SIZE >> 3;
+            byte[] buffer = new byte[maxReadBuffer];
+            int length;
+            while ((length = read(buffer, 0, maxReadBuffer)) != -1) {
+                mMessageDigest.update(buffer, 0, length);
+            }
+            return new BigInteger(1, mMessageDigest.digest()).toString(16);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+
+    public static class Builder {
+        private String filePath;
+
+        public Builder setFilePath(String filePath) {
+            this.filePath = filePath;
+            return this;
+        }
+
+        public FileAdaptor build() {
+            Preconditions.checkNotNull(filePath, "input file path must be not empty");
+            File file = new File(filePath);
+            Preconditions.checkState(file.isFile(), "input must be a file");
+            FileAdaptor fileAdaptor = null;
+            try {
+                fileAdaptor = new FileAdaptor(file);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+            return fileAdaptor;
+        }
+
+    }
 }
