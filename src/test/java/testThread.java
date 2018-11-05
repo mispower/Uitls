@@ -47,13 +47,19 @@ public class testThread implements Runnable {
         //     t.join();
         List<Runnable> tasks = new ArrayList<>();
         System.out.println("start thread:" + thread_num);
-        for (int i = 0; i < thread_num; i++) {
+        for (int i = 0; i < 5; i++) {
             tasks.add(new testThread(i + ""));
         }
         for (Runnable a : tasks) {
             threadPool.execute(a);
         }
         System.out.println("active count:" + threadPool.getActiveCount());
+        threadPool.shutdown();
+        try {
+            threadPool.awaitTermination(1000,TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
     }
 
@@ -94,7 +100,6 @@ public class testThread implements Runnable {
                     }
                     //分配好数据，唤醒其他线程
                     queue.notifyAll();
-                    //释放锁
                     ii.clear();
                     try {
                         queue.wait();
@@ -125,14 +130,20 @@ public class testThread implements Runnable {
         //copy source  data to target to
         Queue target = new LinkedBlockingQueue();
         Queue tmp;
+        int a = 0;
         while (true) {
+            //   System.out.println("thread blocking:"+threadPool.getActiveCount());
             synchronized (queue) {
                 tmp = queue[index];
                 if (tmp == null) continue;
                 if (tmp.size() <= 0) {
                     try {
-//                        System.out.println("wait:" + name);
-                        queue.wait();
+                        System.out.println("wait:" + name + "  a:" + a);
+                        if (a >= 3) {
+                            break;
+                        }
+                        queue.wait(10000);
+                        a++;
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -174,11 +185,12 @@ public class testThread implements Runnable {
 //                } catch (InterruptedException e) {
 //                    e.printStackTrace();
 //                }
-                System.out.println("remove ," + name );
+                System.out.println("remove ," + name + "   thread:" + threadPool.getActiveCount());
 
             }
 
         }
+
     }
 
 

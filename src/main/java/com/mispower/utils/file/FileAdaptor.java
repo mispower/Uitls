@@ -94,7 +94,7 @@ public class FileAdaptor extends BufferedInputStream {
 
 
     /**
-     * Get the MD5 of the file.Used to compare  files which have different file name contains same content or not.
+     * Get the MD5 of the file.Used to compare files which have different name contains same content or not.
      */
     public String getFileMD5() {
         try {
