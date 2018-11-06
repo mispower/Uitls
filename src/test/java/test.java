@@ -3,6 +3,8 @@ import com.mispower.utils.file.FileAdaptor;
 import com.mispower.utils.file.MultiFiles;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +28,7 @@ public class test {
     public void testFileAdaptor() throws IOException {
 
 
-        FileAdaptor fileAdaptor = new FileAdaptor.Builder().setFilePath("d:/1.txt").build();
+        FileAdaptor fileAdaptor = new FileAdaptor.Builder().setFile(new File("d:/1.txt")).build();
         byte[] buffer = new byte[1024];
         int len;
         while ((len = fileAdaptor.read(buffer, 0, buffer.length)) != -1) {
@@ -51,23 +53,45 @@ public class test {
 
     @Test
     public void testArray() {
-        List<String> i = new ArrayList<>();
+        List<String> i = new ArrayList<String>();
         i.add("1");
         i.add("2");
         List<String> t = new ArrayList<>();
-        System.arraycopy(i,0,t,0,2);
-       // t=i.subList(0,2);
-       // i.clear();
 
-        System.out.println(t);
 
+        for (int j = 0; j < 3; j++) {
+//        t.addAll(i);
+
+            t.addAll(i.subList(0, 2));
+            System.out.println(t.get(0) == i.get(0));
+            t.set(0, "a");
+            //i.clear();
+            System.out.println(i + "   " + t);
+            t.clear();
+        }
     }
 
     @Test
     public void testMultiFiles() {
 
-
+        File file = new File("E:\\2");
+        long t = System.currentTimeMillis();
         MultiFiles build = new MultiFiles.Builder().setDirPath("E:\\1").build();
+        build.monitor();
+        long e = System.currentTimeMillis();
+        long ee = e - t;
+        File[] ff = file.listFiles(new FileFilter() {
+            @Override
+            public boolean accept(File pathname) {
+                return pathname.isFile();
+            }
+        });
+        for (File str : ff) {
+            boolean deleted = str.delete();
 
+        }
+        long e1 = System.currentTimeMillis();
+        long ee2 = e1 - e;
+        System.out.println("multi :" + ee + "  single:" + ee2);
     }
 }

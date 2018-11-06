@@ -64,7 +64,7 @@ public class MultiFiles {
     /**
      * list of active  file's name
      */
-    private final List<File> activeFiles = new LinkedList<>();
+    private final List<String> activeFiles = new LinkedList<>();
     /**
      * if policy is "change", change file postfix to this when the file has been dealt
      */
@@ -79,71 +79,103 @@ public class MultiFiles {
             .setNameFormat("file-task-%d").build();
     private final ThreadPoolExecutor THREAD_POOL;
 
-    private MultiFiles(String dirPath, long period, int parallelSize, int blockingSize, int maxFilesPerExecutor,
+    /**
+     * constructor
+     *
+     * @param dirPath             dirPath
+     * @param period              period
+     * @param coreThreads         coreThreads
+     * @param queueSize           queueSize
+     * @param maxFilesPerExecutor maxFilesPerExecutor
+     * @param policy              policy
+     * @param completed           completed
+     */
+    private MultiFiles(String dirPath, long period, int coreThreads, int queueSize, int maxFilesPerExecutor,
                        PolicyEnum policy, String completed) {
         this.dirPath = dirPath;
         this.period = period;
-        this.parallelSize = parallelSize;
-        this.blockingSize = blockingSize;
+        this.parallelSize = coreThreads;
+        this.blockingSize = queueSize;
         this.maxFilesPerExecutor = maxFilesPerExecutor;
         this.policy = policy;
         this.completed = completed;
         THREAD_POOL = new ThreadPoolExecutor(parallelSize, MAX_POOL_SIZE, 100000L, TimeUnit.MILLISECONDS,
                 new LinkedBlockingQueue<Runnable>(blockingSize), NAMED_THREAD_FACTORY, new ThreadPoolExecutor.CallerRunsPolicy());
-
-        monitor();
     }
 
     /**
      * Monitor special directory.
      */
     public void monitor() {
-        assignProcess();
-//        do {
-//            assignProcess();
-//            try {
-//                Thread.sleep(period);
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
-//        } while (true);
+        while (true) {
+            assignProcess();
+            try {
+                Thread.sleep(period);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
-    private int calculateThreadNum() {
-        return original.size() / maxFilesPerExecutor + 1;
-    }
-
-    private void assignProcess() {
+    /**
+     * assign data to each operator thread
+     */
+    public void assignProcess() {
         final File file = new File(dirPath);
         int assignThread;
         int size;
         original.addAll(listFiles(file));
         size = original.size();
+        increase.addAndGet(1);
+        if (size <= 0) {
+            return;
+        }
+        LinkedList<File> tem = new LinkedList<>();
         if (size <= maxFilesPerExecutor) {
-            THREAD_POOL.execute(new DataProcess(original));
+            tem.addAll(original);
+            //copy repartition
+            THREAD_POOL.execute(new DataProcess((List) tem.clone()));
         } else {
             assignThread = calculateThreadNum();
-            int len = 0;
-            int start = 0;
-            List<File> tem;
+            int len;
+            int start;
+
             for (int i = 0; i < assignThread; i++) {
                 start = i * maxFilesPerExecutor;
                 len = start + maxFilesPerExecutor;
                 if (len > size) {
                     len = size;
                 }
-                tem = original.subList(start, len);
-                for(File file1 :tem){
-                    System.out.println(i+"::name:"+file1.getName()+" dizhi:"+file1);
-                }
-                THREAD_POOL.execute(new DataProcess(tem));
+                tem.addAll(original.subList(start, len));
+                //copy repartition
+                THREAD_POOL.execute(new DataProcess((List) tem.clone()));
+                tem.clear();
             }
         }
-       // activeFiles.addAll(original);
+        for (File f : original) {
+            activeFiles.add(f.getName());
+        }
         original.clear();
-        increase.addAndGet(1);
     }
 
+    /**
+     * close
+     */
+    public void close() {
+        THREAD_POOL.shutdown();
+        try {
+            THREAD_POOL.awaitTermination(period, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * calculate how much threads we need
+     */
+    private int calculateThreadNum() {
+        return original.size() / maxFilesPerExecutor + 1;
+    }
 
     /**
      * to convert filter result to List
@@ -167,11 +199,10 @@ public class MultiFiles {
             @Override
             public boolean accept(File file) {
                 String fileName = file.getName();
-                boolean bl = activeFiles.contains(fileName) || expireFiles.contains(fileName);
+                boolean bl = activeFiles.contains(fileName) || expireFiles.contains(fileName) || fileName.contains(completed);
                 return !bl && doFilter(file);
             }
         };
-
     }
 
     /**
@@ -181,11 +212,10 @@ public class MultiFiles {
      * @return boolean
      */
     public boolean doFilter(File file) {
-        return true;
+        return file.isFile();
     }
 
     public static class Builder {
-        private int maxPoolSize = Integer.MAX_VALUE;
         /**
          * directory of monitor,this parameter must be special
          */
@@ -193,7 +223,7 @@ public class MultiFiles {
         /**
          * interval for period
          */
-        private long period = 10000L;
+        private long period = 1000L;
         /**
          * policy when the file has been dealt.Default is "delete".
          */
@@ -201,7 +231,7 @@ public class MultiFiles {
         /**
          * parallel thread num
          */
-        private int parallelSize = 2;
+        private int parallelSize = 10;
 
         /**
          * block queue size
@@ -216,12 +246,7 @@ public class MultiFiles {
         /**
          * if policy is "change", change file postfix to this when the file has been dealt
          */
-        private String completed;
-
-        public Builder setMaxPoolSize(int maxPoolSize) {
-            this.maxPoolSize = maxPoolSize;
-            return this;
-        }
+        private String completed = "COMPLETED";
 
         public Builder setDirPath(String dirPath) {
             this.dirPath = dirPath;
@@ -234,7 +259,7 @@ public class MultiFiles {
         }
 
         public Builder setPolicy(String policy) {
-            this.policy = PolicyEnum.valueOf(policy);
+            this.policy = PolicyEnum.valueOf(policy.toUpperCase());
             return this;
         }
 
@@ -259,73 +284,8 @@ public class MultiFiles {
         }
 
         public MultiFiles build() {
-
             Preconditions.checkNotNull(dirPath, "parameter must be not empiry");
             return new MultiFiles(dirPath, period, parallelSize, bufferSize, maxFilesPerExecutor, policy, completed);
-        }
-    }
-
-
-    public class DataProcess implements Runnable {
-
-        private List<File> files;
-
-        public DataProcess(List files) {
-            this.files = files;
-        }
-
-        @Override
-        public void run() {
-            try {
-                if (files != null && files.size() > 0) {
-                    for (File file : files) {
-                        file.renameTo(new File(file.getAbsoluteFile() + ".C"));
-                        System.out.println(Thread.currentThread().getName() + "::" + file.getName()+"   dizhi"+file);
-                    }
-                }
-            } catch (Exception e) {
-                System.out.println(files);
-            }
-        }
-
-
-    }
-
-    /**
-     * Policy enum
-     */
-    protected enum PolicyEnum {
-
-        /**
-         * policy:"change"
-         */
-        CHANGE("change", 1),
-
-        /**
-         * policy:"delete"
-         */
-        DELETE("delete", 2);
-
-        private String enumName;
-        private int index;
-
-        PolicyEnum(String enumName, int index) {
-            this.enumName = enumName;
-            this.index = index;
-        }
-
-        public static int getIndexByName(String enumName) {
-            return PolicyEnum.valueOf(enumName).index;
-        }
-
-        public static String getNameByIndex(int index) {
-            for (PolicyEnum c : PolicyEnum.values()) {
-                if (c.index == index) {
-                    return c.enumName;
-                }
-            }
-            return null;
-
         }
     }
 

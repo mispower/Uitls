@@ -113,16 +113,14 @@ public class FileAdaptor extends BufferedInputStream {
 
 
     public static class Builder {
-        private String filePath;
+        private File file;
 
-        public Builder setFilePath(String filePath) {
-            this.filePath = filePath;
+        public Builder setFile(File file) {
+            this.file = file;
             return this;
         }
 
         public FileAdaptor build() {
-            Preconditions.checkNotNull(filePath, "input file path must be not empty");
-            File file = new File(filePath);
             Preconditions.checkState(file.isFile(), "input must be a file");
             FileAdaptor fileAdaptor = null;
             try {
