@@ -11,40 +11,53 @@ import java.util.List;
  */
 public class DataProcess implements Runnable {
 
-    private List<File> files;
+    private Event<File> event;
 
-    DataProcess(List files) {
-        this.files = files;
+    DataProcess(Event<File> event) {
+        this.event = event;
     }
 
     @Override
     public void run() {
-        if (files != null && files.size() > 0) {
-            doWork();
+        if (event != null && event.getData().size() > 0) {
+            process();
         }
     }
 
-    private void doWork() {
+    /**
+     * process data logic
+     */
+    private void process() {
         FileAdaptor fileAdaptor;
+        List<File> files = event.getData();
         for (File file : files) {
             fileAdaptor = new FileAdaptor.Builder().setFile(file).build();
             /*
              * todo
+             */
+            /**
+             * close file reader buffer
              */
             try {
                 fileAdaptor.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            switch (PolicyEnum.CHANGE) {
+            boolean success = false;
+            switch (event.getPolicy()) {
                 case CHANGE:
-                    file.renameTo(new File(file.getAbsoluteFile() + "." + "completed"));
+                    success = file.renameTo(new File(String.format("%s.%s", file.getAbsoluteFile(), event.getCompleted())));
                     break;
                 case DELETE:
-                    file.delete();
+                    success = file.delete();
                     break;
                 default:
                     break;
+            }
+            if (success) {
+                synchronized (event.getActiveFiles()) {
+                    event.getActiveFiles().remove(file.getName());
+                }
             }
         }
     }

@@ -100,7 +100,7 @@ public class MultiFiles {
         this.policy = policy;
         this.completed = completed;
         THREAD_POOL = new ThreadPoolExecutor(parallelSize, MAX_POOL_SIZE, 100000L, TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<Runnable>(blockingSize), NAMED_THREAD_FACTORY, new ThreadPoolExecutor.CallerRunsPolicy());
+                new LinkedBlockingQueue<>(blockingSize), NAMED_THREAD_FACTORY, new ThreadPoolExecutor.CallerRunsPolicy());
     }
 
     /**
@@ -121,25 +121,28 @@ public class MultiFiles {
      * assign data to each operator thread
      */
     public void assignProcess() {
+
         final File file = new File(dirPath);
         int assignThread;
         int size;
         original.addAll(listFiles(file));
         size = original.size();
+        //record detection times
         increase.addAndGet(1);
         if (size <= 0) {
             return;
         }
         LinkedList<File> tem = new LinkedList<>();
+        List<Event> events = new LinkedList<>();
         if (size <= maxFilesPerExecutor) {
             tem.addAll(original);
             //copy repartition
-            THREAD_POOL.execute(new DataProcess((List) tem.clone()));
+            events.add(new Event(policy, completed, expireFiles, activeFiles, (List) tem.clone()));
         } else {
+            // calculate how much threads
             assignThread = calculateThreadNum();
             int len;
             int start;
-
             for (int i = 0; i < assignThread; i++) {
                 start = i * maxFilesPerExecutor;
                 len = start + maxFilesPerExecutor;
@@ -148,12 +151,12 @@ public class MultiFiles {
                 }
                 tem.addAll(original.subList(start, len));
                 //copy repartition
-                THREAD_POOL.execute(new DataProcess((List) tem.clone()));
+                events.add(new Event(policy, completed, expireFiles, activeFiles, (List) tem.clone()));
                 tem.clear();
             }
         }
-        for (File f : original) {
-            activeFiles.add(f.getName());
+        for (Event event : events) {
+            THREAD_POOL.execute(new DataProcess(event));
         }
         original.clear();
     }
@@ -200,7 +203,9 @@ public class MultiFiles {
             public boolean accept(File file) {
                 String fileName = file.getName();
                 boolean bl = activeFiles.contains(fileName) || expireFiles.contains(fileName) || fileName.contains(completed);
-                return !bl && doFilter(file);
+                synchronized (activeFiles) {
+                    return (!bl && doFilter(file)) ? activeFiles.add(fileName) : false;
+                }
             }
         };
     }

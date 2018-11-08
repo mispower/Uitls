@@ -74,24 +74,25 @@ public class test {
     @Test
     public void testMultiFiles() {
 
-        File file = new File("E:\\2");
+//        File file = new File("E:\\2");
         long t = System.currentTimeMillis();
-        MultiFiles build = new MultiFiles.Builder().setDirPath("E:\\1").build();
+        MultiFiles build = new MultiFiles.Builder().setDirPath("E:\\1").setPolicy("CHANGE").build();
         build.monitor();
         long e = System.currentTimeMillis();
         long ee = e - t;
-        File[] ff = file.listFiles(new FileFilter() {
-            @Override
-            public boolean accept(File pathname) {
-                return pathname.isFile();
-            }
-        });
-        for (File str : ff) {
-            boolean deleted = str.delete();
-
-        }
+//        File[] ff = file.listFiles(new FileFilter() {
+//            @Override
+//            public boolean accept(File pathname) {
+//                return pathname.isFile();
+//            }
+//        });
+//        for (File str : ff) {
+//            boolean deleted = str.delete();
+//
+//        }
         long e1 = System.currentTimeMillis();
         long ee2 = e1 - e;
         System.out.println("multi :" + ee + "  single:" + ee2);
     }
+
 }
