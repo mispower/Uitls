@@ -4,7 +4,6 @@ import com.mispower.utils.file.MultiFiles;
 import org.junit.Test;
 
 import java.io.File;
-import java.io.FileFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -78,6 +77,7 @@ public class test {
         long t = System.currentTimeMillis();
         MultiFiles build = new MultiFiles.Builder().setDirPath("E:\\1").setPolicy("CHANGE").build();
         build.monitor();
+        build.close();
         long e = System.currentTimeMillis();
         long ee = e - t;
 //        File[] ff = file.listFiles(new FileFilter() {

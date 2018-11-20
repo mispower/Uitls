@@ -100,7 +100,7 @@ public class MultiFiles {
         this.policy = policy;
         this.completed = completed;
         THREAD_POOL = new ThreadPoolExecutor(parallelSize, MAX_POOL_SIZE, 100000L, TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(blockingSize), NAMED_THREAD_FACTORY, new ThreadPoolExecutor.CallerRunsPolicy());
+                new LinkedBlockingQueue<Runnable>(blockingSize), NAMED_THREAD_FACTORY, new ThreadPoolExecutor.CallerRunsPolicy());
     }
 
     /**
