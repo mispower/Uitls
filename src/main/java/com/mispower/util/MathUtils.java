@@ -1,4 +1,4 @@
-package com.mispower.utils;
+package com.mispower.util;
 
 /**
  * The class {@code MathUtils} contains some methods which {@code Math} is not contains.

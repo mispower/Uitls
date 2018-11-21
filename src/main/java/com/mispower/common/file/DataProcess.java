@@ -1,4 +1,4 @@
-package com.mispower.utils.file;
+package com.mispower.common.file;
 
 import java.io.File;
 import java.io.IOException;

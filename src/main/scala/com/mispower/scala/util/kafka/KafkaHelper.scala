@@ -1,6 +1,6 @@
-package basic.kafka
+package com.mispower.scala.util.kafka
 
-import basic.common.PropertiesUtil
+import com.mispower.util.PropertiesUtils
 import kafka.api.{OffsetRequest, PartitionOffsetRequestInfo, TopicMetadataRequest}
 import kafka.common.TopicAndPartition
 import kafka.consumer.{ConsumerConfig, SimpleConsumer}
@@ -10,6 +10,11 @@ import scala.util.Random
 /**
   * KafkaHelper
   *
+  * @param host    broker host
+  * @param port    broker port
+  * @param topic   topicName
+  * @param time    specify time
+  * @param groupId group id
   * @author wuguolin
   */
 class KafkaHelper(host: String, port: Int, topic: String, time: Long, groupId: String) {
@@ -74,10 +79,10 @@ object KafkaHelper {
       * @return
       */
     def apply(time: Long): KafkaHelper = {
-        val topic = PropertiesUtil.getProperty("topic")
-        val groupId = PropertiesUtil.getProperty("group_id")
-        val propertyName = PropertiesUtil.getProperty("bootstrap.servers")
-        val bootstrap = PropertiesUtil.getProperty(propertyName)
+        val topic = PropertiesUtils.getProperty("topic")
+        val groupId = PropertiesUtils.getProperty("group_id")
+        val propertyName = PropertiesUtils.getProperty("bootstrap.servers")
+        val bootstrap = PropertiesUtils.getProperty(propertyName)
         val hosts = bootstrap.split(",")
         // random select broker
         val index = Random.nextInt(hosts.length)

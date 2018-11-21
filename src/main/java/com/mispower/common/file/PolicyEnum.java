@@ -1,4 +1,4 @@
-package com.mispower.utils.file;
+package com.mispower.common.file;
 
 /**
  * Policy enum

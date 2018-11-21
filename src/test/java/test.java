@@ -1,6 +1,6 @@
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.mispower.utils.file.FileAdaptor;
-import com.mispower.utils.file.MultiFiles;
+import com.mispower.common.file.FileAdaptor;
+import com.mispower.common.file.MultiFiles;
 import org.junit.Test;
 
 import java.io.File;

@@ -1,4 +1,4 @@
-package com.mispower.utils;
+package com.mispower.util;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * @author wuguolin
  */
-public class ExportUtil {
+public class ExportUtils {
 
     /**
      * basic path
@@ -130,7 +130,7 @@ public class ExportUtil {
      * @param data     数据
      */
     public static void download(HttpServletResponse resp, String fileName, String postfix, String title, List data) {
-        String pathName = ExportUtil.generateFile(fileName, postfix, title, data);
+        String pathName = ExportUtils.generateFile(fileName, postfix, title, data);
         download(resp, pathName);
     }
 
